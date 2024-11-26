@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 #
 #       Trojan & Hysteria Server Installer Script
@@ -384,9 +384,11 @@ uninstall_acme() {
 # NOTE: Functions for cert
 install_cert() {
     if lsof -i :80 >/dev/null; then
-        _pid=$(lsof -t -i :80)
-        _process=$(ps -p "$_pid" -o comm=)
-        mhead && merror "Port 80 is already in use by process $_process (PID: $_pid), please free the port and try again" && exit 1
+        for _pid in $(lsof -t -i :80); do
+            _process=$(ps -p "$_pid" -o comm= | tail -n 1)
+            mhead && merror "Port 80 is in use by process $_process (PID: $_pid)"
+        done
+        mhead && merror "Please free the port and try again." && exit 1
     elif [[ -e "$PRIVATE_KEY_PATH" && -e "$PUBLIC_PEM_PATH" ]]; then
         mhead && mnote "Installing $PUBLIC_PEM_PATH ..." "true" && mwarning "skip"
         mhead && mnote "Installing $PRIVATE_KEY_PATH ..." "true" && mwarning "skip" && return
@@ -1068,7 +1070,8 @@ update_reloadcmd() {
 
     reload_cmd=$("$HOME/.acme.sh/acme.sh" --info -d "$SERVER_DOMAIN" | grep "Le_ReloadCmd=" | cut -d '=' -f 2-)
 
-    mhead && mnote "Current reload command: $reload_cmd"
+    mhead && mnote "Current reload command: " "true"
+    msuccess "$reload_cmd"
 
     read -rp "Enter new reload command: " new_reload_cmd
 
