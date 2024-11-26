@@ -1374,10 +1374,10 @@ main() {
         show_information
         mnote "If necessary, please run following step: "
         mnote ""
-        mnote "    * $0 --reloadcmd"
         mnote "    * nft list ruleset"
+        mnote "    * $0 --reloadcmd"
+        mnote "    * systemctl enable nginx.service"
         mnote "    * systemctl enable nftables.service"
-        mnote "    * systemctl enable nginx-server.service"
         mnote "    * systemctl enable trojan-server.service"
         mnote "    * systemctl enable hysteria-server.service"
     fi
