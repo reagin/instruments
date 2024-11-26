@@ -1266,6 +1266,9 @@ show_information() {
 }
 
 parse_arguments() {
+    # Create a temporary directory and temporarily store all download files
+    create_temporary_folder
+
     while [[ "$#" -gt '0' ]]; do
         case "$1" in
         'help' | '--help')
@@ -1319,8 +1322,6 @@ main() {
     check_permission
     check_operating_system
     check_dependent_software
-    # Create a temporary directory and temporarily store all download files
-    create_temporary_folder
 
     if has_prefix "$OPERATION" "remove_"; then
         OPERATION="${OPERATION#remove_}"
