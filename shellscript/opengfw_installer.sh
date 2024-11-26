@@ -218,18 +218,16 @@ get_proxy_name() {
     local _country_flag
 
     declare -A country_flags=(
-        ["US"]="🇺🇸"
-        ["CN"]="🇨🇳"
-        ["JP"]="🇯🇵"
-        ["DE"]="🇩🇪"
-        ["FR"]="🇫🇷"
+        ["US"]="🗽"
+        ["HK"]="🐉"
+        ["JP"]="🌸"
     )
 
     [[ ! -f "geoip.json" ]] && curl -fsSL "https://api.ip.sb/geoip" -A Mozilla -o "geoip.json"
 
     _region=$(jq -r '.region' <"geoip.json")
     _country_code=$(jq -r '.country_code' <"geoip.json")
-    _country_flag=${country_flags[$_country_code]:-"😉"}
+    _country_flag=${country_flags[$_country_code]:-"😢"}
 
     [[ -n "$_region" && -n "$_country_code" ]] && echo "$_country_flag $_region"
 }
@@ -253,28 +251,27 @@ check_architecture() {
     esac
 }
 
-# TODO: unset
 check_package_installer() {
     if [[ -n "$PACKAGE_INSTALLER" ]]; then
         return
     elif has_command apt; then
-        # apt update -y >/dev/null 2>&1
+        apt update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='apt -y install'
         PACKAGE_UNINSTALLER='apt -y purge' && return
     elif has_command dnf; then
-        # dnf check-update -y >/dev/null 2>&1
+        dnf check-update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='dnf -y install'
         PACKAGE_UNINSTALLER='dnf -y remove --purge' && return
     elif has_command yum; then
-        # yum check-update -y >/dev/null 2>&1
+        yum check-update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='yum -y install'
         PACKAGE_UNINSTALLER='yum -y remove --purge' && return
     elif has_command zypper; then
-        # zypper refresh -y >/dev/null 2>&1
+        zypper refresh -y >/dev/null 2>&1
         PACKAGE_INSTALLER='zypper install -y --no-recommends'
         PACKAGE_UNINSTALLER='zypper remove -y --clean-deps' && return
     elif has_command pacman; then
-        # pacman -Syu --noconfirm >/dev/null 2>&1
+        pacman -Syu --noconfirm >/dev/null 2>&1
         PACKAGE_INSTALLER='pacman -S --noconfirm'
         PACKAGE_UNINSTALLER='pacman -Rns --noconfirm' && return
     fi
@@ -617,7 +614,7 @@ download_nginx_website() {
 }
 
 install_nginx_website() {
-    download_nginx_website "https://cdn.jsdelivr.net/gh/reagin/resources@main/template/rehug.cc.tar.gz" "rehug.cc.tar.gz"
+    download_nginx_website "https://raw.githubusercontent.com/reagin/resources/refs/heads/main/template/rehug.cc.tar.gz" "rehug.cc.tar.gz"
 
     mhead && mnote "Installing fake website to /var/www/$SERVER_DOMAIN/public ... " "true"
 
@@ -1006,8 +1003,10 @@ EOF
 
 enable_hysteria_service() {
     systemctl daemon-reload
-    systemctl start nginx.service >/dev/null 2>&1
-    systemctl enable nginx.service >/dev/null 2>&1
+    systemctl start nftables.service >/dev/null 2>&1
+    systemctl enable nftables.service >/dev/null 2>&1
+    systemctl start hysteria.service >/dev/null 2>&1
+    systemctl enable hysteria.service >/dev/null 2>&1
 }
 
 install_hysteria() {
@@ -1079,8 +1078,6 @@ update_reloadcmd() {
         --key-file "$PRIVATE_KEY_PATH" \
         --fullchain-file "$PUBLIC_PEM_PATH" \
         --reloadcmd "$new_reload_cmd"
-
-    echo "Reload command updated to: $new_reload_cmd"
 }
 
 # NOTE: Get the configuration in the current system
@@ -1132,7 +1129,7 @@ get_mihomo_subscription() {
     rm -rf "$_mihomo_dir"
     install -dm755 "$_mihomo_dir"
 
-    curl -fsSL "https://cdn.jsdelivr.net/gh/reagin/resources@main/template/mihomo.yaml" -o "$_mihomo_dir/$_yaml_name"
+    curl -fsSL "https://raw.githubusercontent.com/reagin/resources/refs/heads/main/template/mihomo.yaml" -o "$_mihomo_dir/$_yaml_name"
 
     [[ -z "$HYSTERIA_AUTH_PASSWORD" ]] && sed -i "53d" "$_mihomo_dir/$_yaml_name"
     [[ -z "$TROJAN_AUTH_PASSWORD" ]] && sed -i "52d" "$_mihomo_dir/$_yaml_name"
@@ -1144,7 +1141,7 @@ get_mihomo_subscription() {
     sed -i "s|<<MASQUERADE_HREF>>|${MASQUERADE_HREF}|g" "$_mihomo_dir/$_yaml_name"
 
     if [[ -n "$HYSTERIA_AUTH_PASSWORD" ]]; then
-        sed -i "s|<<HYSTERIA_NAME>>|$(get_proxy_name)|g" "$_mihomo_dir/$_yaml_name"
+        sed -i "s|<<HYSTERIA_NAME>>|$(get_proxy_name | sed 's/[&/\]/\\&/g') Hysteria|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<HYSTERIA_LISTEN_PORT>>|${HYSTERIA_LISTEN_PORT}|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<HYSTERIA_HOPPING_RANGE>>|${HYSTERIA_HOPPING_RANGE}|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<HYSTERIA_AUTH_PASSWORD>>|${HYSTERIA_AUTH_PASSWORD}|g" "$_mihomo_dir/$_yaml_name"
@@ -1152,7 +1149,7 @@ get_mihomo_subscription() {
     fi
 
     if [[ -n "$TROJAN_AUTH_PASSWORD" ]]; then
-        sed -i "s|<<TROJAN_NAME>>|$(get_proxy_name)|g" "$_mihomo_dir/$_yaml_name"
+        sed -i "s|<<TROJAN_NAME>>|$(get_proxy_name | sed 's/[&/\]/\\&/g') Trojan|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<TROJAN_LISTEN_PORT>>|${TROJAN_LISTEN_PORT}|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<TROJAN_AUTH_PASSWORD>>|${TROJAN_AUTH_PASSWORD}|g" "$_mihomo_dir/$_yaml_name"
     fi
