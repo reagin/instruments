@@ -54,9 +54,6 @@ SERVER_DOMAIN="${SERVER_DOMAIN:-"opengfw.rehug.cc"}"
 # Personal Email
 PERSONAL_EMAIL="${PERSONAL_EMAIL:-"reagin@163.com"}"
 
-# Proxy SNI Domain
-MASQUERADE_HREF="${MASQUERADE_HREF:-"https://opengfw.rehug.cc"}"
-
 # CONFIG: ACME.SH CONFIGURATION
 # Directory to store acme cert
 ACME_CERT_DIR="${ACME_CERT_DIR:-"/etc/acme"}"
@@ -933,7 +930,7 @@ obfs:
 masquerade:
     type: proxy
     proxy:
-        url: $MASQUERADE_HREF
+        url: https://$SERVER_DOMAIN
         rewriteHost: true
 EOF
 }
@@ -1003,10 +1000,8 @@ EOF
 
 enable_hysteria_service() {
     systemctl daemon-reload
-    systemctl start nftables.service >/dev/null 2>&1
-    systemctl enable nftables.service >/dev/null 2>&1
-    systemctl start hysteria.service >/dev/null 2>&1
-    systemctl enable hysteria.service >/dev/null 2>&1
+    systemctl start nftables.service hysteria.service >/dev/null 2>&1 && sleep 1
+    systemctl enable nftables.service hysteria.service >/dev/null 2>&1 && sleep 1
 }
 
 install_hysteria() {
@@ -1029,8 +1024,8 @@ stop_hysteria_services() {
     for service in $(get_hysteria_services); do
         mnote "    * Stopping $service ... " "true"
 
-        systemctl stop "$service" >/dev/null
-        systemctl disable "$service" >/dev/null
+        systemctl stop "$service" >/dev/null 2>&1 && sleep 1
+        systemctl disable "$service" >/dev/null 2>&1 && sleep 1
 
         msuccess "done"
     done
@@ -1138,7 +1133,6 @@ get_mihomo_subscription() {
     [[ -z "$TROJAN_AUTH_PASSWORD" ]] && sed -i "29,35d" "$_mihomo_dir/$_yaml_name"
 
     sed -i "s|<<SERVER_DOMAIN>>|${SERVER_DOMAIN}|g" "$_mihomo_dir/$_yaml_name"
-    sed -i "s|<<MASQUERADE_HREF>>|${MASQUERADE_HREF}|g" "$_mihomo_dir/$_yaml_name"
 
     if [[ -n "$HYSTERIA_AUTH_PASSWORD" ]]; then
         sed -i "s|<<HYSTERIA_NAME>>|$(get_proxy_name | sed 's/[&/\]/\\&/g') Hysteria|g" "$_mihomo_dir/$_yaml_name"
@@ -1216,7 +1210,6 @@ show_environment_and_exit() {
     echo -e "    ACME_CERT_DIR                  (default: $ACME_CERT_DIR)"
     echo -e "    SERVER_DOMAIN                  (default: $SERVER_DOMAIN)"
     echo -e "    PERSONAL_EMAIL                 (default: $PERSONAL_EMAIL)"
-    echo -e "    MASQUERADE_HREF                (default: $MASQUERADE_HREF)"
     echo -e "    TROJAN_LISTEN_PORT             (default: $TROJAN_LISTEN_PORT)"
     echo -e "    TROJAN_AUTH_PASSWORD           (default: $TROJAN_AUTH_PASSWORD)"
     echo -e "    HYSTERIA_LISTEN_PORT           (default: $HYSTERIA_LISTEN_PORT)"
@@ -1235,7 +1228,6 @@ show_information() {
     echo -ne "Server IP:        " && mnote "$(curl -s https://api.ip.sb/ip -A Mozilla)"
     echo -ne "Server Domain:    " && mnote "$SERVER_DOMAIN"
     echo -ne "Personal Email:   " && mnote "$PERSONAL_EMAIL"
-    echo -ne "Masquerade Href:  " && mnote "$MASQUERADE_HREF"
 
     if [[ -e "$TROJAN_CONFIG_DIR/config.json" ]]; then
         echo
@@ -1362,7 +1354,7 @@ main() {
         show_information
         mnote "You may want to run the following steps: "
         mnote ""
-        mnote "    * systemctl disable nftables.service"
+        mnote "    * $0 --reloadcmd"
         mnote "    * systemctl restart nftables.service"
         mnote ""
     elif has_prefix "$OPERATION" "install_"; then
@@ -1408,6 +1400,7 @@ main() {
         show_information
         mnote "If necessary, please run following step: "
         mnote ""
+        mnote "    * $0 --reloadcmd"
         mnote "    * nft list ruleset"
         mnote "    * systemctl restart nftables.service"
         mnote "    * systemctl restart nginx-server.service"
