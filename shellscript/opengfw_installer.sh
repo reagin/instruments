@@ -252,23 +252,18 @@ check_package_installer() {
     if [[ -n "$PACKAGE_INSTALLER" ]]; then
         return
     elif has_command apt; then
-        apt update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='apt -y install'
         PACKAGE_UNINSTALLER='apt -y purge' && return
     elif has_command dnf; then
-        dnf check-update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='dnf -y install'
         PACKAGE_UNINSTALLER='dnf -y remove --purge' && return
     elif has_command yum; then
-        yum check-update -y >/dev/null 2>&1
         PACKAGE_INSTALLER='yum -y install'
         PACKAGE_UNINSTALLER='yum -y remove --purge' && return
     elif has_command zypper; then
-        zypper refresh -y >/dev/null 2>&1
         PACKAGE_INSTALLER='zypper install -y --no-recommends'
         PACKAGE_UNINSTALLER='zypper remove -y --clean-deps' && return
     elif has_command pacman; then
-        pacman -Syu --noconfirm >/dev/null 2>&1
         PACKAGE_INSTALLER='pacman -S --noconfirm'
         PACKAGE_UNINSTALLER='pacman -Rns --noconfirm' && return
     fi
@@ -625,20 +620,11 @@ install_nginx_website() {
     msuccess "done"
 }
 
-enable_nginx_service() {
-    if nginx -t >/dev/null 2>&1; then
-        systemctl start nginx.service >/dev/null 2>&1
-    else
-        mhead && merror "Nginx configuration test failed" && exit 1
-    fi
-}
-
 install_nginx() {
     install_nginx_binary
     delete_nginx_default
     install_nginx_config
     install_nginx_website
-    enable_nginx_service
 }
 
 uninstall_nginx() {
@@ -805,18 +791,12 @@ install_trojan_systemd() {
     install_content -Dm644 "$(generate_trojan_systemd_priority)" "$SYSTEMD_SERVICES_DIR/trojan-server.service.d/priority.conf" "true"
 }
 
-enable_trojan_service() {
-    systemctl daemon-reload
-    systemctl start nginx.service >/dev/null 2>&1
-    systemctl enable nginx.service >/dev/null 2>&1
-}
-
 install_trojan() {
     install_trojan_dir
     install_trojan_binary
     install_trojan_config
     install_trojan_systemd
-    enable_trojan_service
+    systemctl daemon-reload
 }
 
 get_trojan_services() {
@@ -847,13 +827,12 @@ remove_trojan_configs() {
         "$TROJAN_EXECUTABLE_PATH"; do
         remove_content "$_path"
     done
-
-    systemctl daemon-reload
 }
 
 uninstall_trojan() {
     stop_trojan_services
     remove_trojan_configs
+    systemctl daemon-reload
 }
 
 # NOTE: Functions for trojan
@@ -998,19 +977,13 @@ EOF
     msuccess "done"
 }
 
-enable_hysteria_service() {
-    systemctl daemon-reload
-    systemctl start nftables.service hysteria.service >/dev/null 2>&1 && sleep 1
-    systemctl enable nftables.service hysteria.service >/dev/null 2>&1 && sleep 1
-}
-
 install_hysteria() {
     install_hysteria_dir
     install_hysteria_binary
     install_hysteria_config
     install_hysteria_systemd
     install_hysteria_porthopping
-    enable_hysteria_service
+    systemctl daemon-reload
 }
 
 get_hysteria_services() {
@@ -1048,13 +1021,14 @@ remove_hysteria_porthopping() {
 
     sudo sed -i '/# hysteria_porthopping config/,+11d' /etc/nftables.conf
 
-    systemctl daemon-reload
+    msuccess "done"
 }
 
 uninstall_hysteria() {
     stop_hysteria_services
     remove_hysteria_configs
     remove_hysteria_porthopping
+    systemctl daemon-reload
 }
 
 # NOTE: Update the reload command of acme.sh
@@ -1402,10 +1376,10 @@ main() {
         mnote ""
         mnote "    * $0 --reloadcmd"
         mnote "    * nft list ruleset"
-        mnote "    * systemctl restart nftables.service"
-        mnote "    * systemctl restart nginx-server.service"
-        mnote "    * systemctl restart trojan-server.service"
-        mnote "    * systemctl restart hysteria-server.service"
+        mnote "    * systemctl enable nftables.service"
+        mnote "    * systemctl enable nginx-server.service"
+        mnote "    * systemctl enable trojan-server.service"
+        mnote "    * systemctl enable hysteria-server.service"
     fi
 }
 
