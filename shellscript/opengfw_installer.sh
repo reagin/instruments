@@ -23,8 +23,8 @@ set -Eeuo pipefail
 trap remove_temporary_folder EXIT
 
 # SYSTEM REQUIREMENTS
-readonly DEPANDS_PACKAGE=('jq' 'git' 'cron' 'curl' 'lsof' 'socat' 'openssl' 'coreutils' 'libncurses5-dev')
-readonly DEPANDS_COMMAND=('jq' 'git' 'cron' 'curl' 'lsof' 'socat' 'openssl' 'md5sum' 'tput')
+readonly DEPANDS_PACKAGE=('jq' 'git' 'cron' 'curl' 'lsof' 'socat' 'openssl' 'coreutils' 'build-essential' 'libncurses5-dev')
+readonly DEPANDS_COMMAND=('jq' 'git' 'cron' 'curl' 'lsof' 'socat' 'openssl' 'md5sum' 'make' 'tput')
 
 # CONFIG: GLOBAL CONFIGURATION
 # Basename of this script
