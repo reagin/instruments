@@ -45,14 +45,14 @@ PACKAGE_UNINSTALLER=
 # Temporary file directory
 TEMPORARY_FILE_DIR=
 
-# Paths to install systemd files
-SYSTEMD_SERVICES_DIR="/etc/systemd/system"
-
 # Server Domain
-SERVER_DOMAIN="${SERVER_DOMAIN:-"opengfw.rehug.cc"}"
+SERVER_DOMAIN="${SERVER_DOMAIN:-"gfw.rehug.cc"}"
 
 # Personal Email
 PERSONAL_EMAIL="${PERSONAL_EMAIL:-"reagin@163.com"}"
+
+# Paths to install systemd files
+SYSTEMD_SERVICES_DIR="/etc/systemd/system"
 
 # CONFIG: ACME.SH CONFIGURATION
 # Directory to store acme cert
@@ -194,7 +194,7 @@ remove_content() {
     if [[ "$_destination" == '/' ]]; then
         mnote "$_destination ... " "true" && merror "error"
     elif [[ ! -e "$_destination" ]]; then
-        mnote "$_destination ... " "true" && merror "not existence"
+        mnote "$_destination ... " "true" && merror "not existed"
     elif [[ -f "$_destination" ]]; then
         mnote "file: $_destination ... " "true" && rm -rf "$_destination" && msuccess "done"
     elif [[ -d "$_destination" ]]; then
@@ -243,7 +243,7 @@ check_architecture() {
         ARCHITECTURE='amd64'
         ;;
     *)
-        mhead && merror "The architecture '$(uname -a)' is not supported" && exit 4
+        mhead && merror "The architecture '$(uname -a)' is not supported" && exit 2
         ;;
     esac
 }
@@ -288,7 +288,7 @@ check_operating_system() {
     *ubuntu*) ;;
     *debian*) ;;
     *)
-        mhead && merror "This script only supports ubuntu/debian Linux" && exit 3
+        mhead && merror "This script only supports ubuntu/debian Linux" && exit 2
         ;;
     esac
 
@@ -308,12 +308,12 @@ check_dependent_software() {
         _cmd=${DEPANDS_COMMAND[i]}
         _package_name=${DEPANDS_PACKAGE[i]}
         if ! has_command "$_cmd"; then
-            merror "    - ${_package_name} does not exist"
+            merror "    - ${_package_name} not exist"
             mnote "    + installing missing dependence ${_package_name}..."
             if $PACKAGE_INSTALLER "$_package_name" >/dev/null 2>&1; then
                 msuccess "    + install ${_package_name} successfully"
             else
-                mhead && merror "Cannot install ${_package_name} with detected package manager, Please install it manually" && exit 5
+                mhead && merror "Cannot install ${_package_name} with detected package manager, Please install it manually" && exit 3
             fi
         else
             msuccess "    * ${_package_name} is installed"
@@ -328,7 +328,7 @@ create_temporary_folder() {
     TEMPORARY_FILE_DIR=$(mktemp -d)
 
     if ! pushd "$TEMPORARY_FILE_DIR" >/dev/null 2>&1; then
-        mhead && merror "Change temporary directory failed" && exit 6
+        mhead && merror "Change temporary directory failed" && exit 4
     fi
 }
 
@@ -347,7 +347,7 @@ install_acme() {
         mwarning "existed" && return
     elif has_command "acme.sh"; then
         merror "error"
-        mhead && merror "Please uninstall acme.sh manually" && exit 5
+        mhead && merror "Please uninstall acme.sh manually" && exit 11
     fi
 
     git clone --depth 1 https://github.com/acmesh-official/acme.sh.git >/dev/null 2>&1
@@ -377,7 +377,7 @@ install_cert() {
             _process=$(ps -p "$_pid" -o comm= | tail -n 1)
             mhead && merror "Port 80 is in use by process $_process (PID: $_pid)"
         done
-        mhead && merror "Please free the port and try again." && exit 1
+        mhead && merror "Please free the port and try again." && exit 21
     elif [[ -e "$PRIVATE_KEY_PATH" && -e "$PUBLIC_PEM_PATH" ]]; then
         mhead && mnote "Installing $PUBLIC_PEM_PATH ..." "true" && mwarning "skip"
         mhead && mnote "Installing $PRIVATE_KEY_PATH ..." "true" && mwarning "skip" && return
@@ -402,15 +402,12 @@ install_nginx_binary() {
 
     if has_command nginx; then
         mwarning "existed"
-        mhead && merror "For your data security, nginx needs to uninstall manually first" && exit 12
+        mhead && merror "For your data security, nginx needs to uninstall manually first" && exit 31
     elif $PACKAGE_INSTALLER nginx >/dev/null 2>&1; then
         msuccess "done"
     else
-        merror "error" && exit 5
+        merror "error" && exit 32
     fi
-
-    systemctl stop nginx.service >/dev/null 2>&1
-    systemctl enable nginx.service >/dev/null 2>&1
 }
 
 delete_nginx_default() {
@@ -599,7 +596,7 @@ download_nginx_website() {
 
     if ! curl -fsSL "$_website_url" -o "$_destination" || [[ ! -s "$_destination" ]]; then
         merror "error"
-        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 8
+        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 33
     fi
 
     msuccess "done"
@@ -625,6 +622,9 @@ install_nginx() {
     delete_nginx_default
     install_nginx_config
     install_nginx_website
+
+    systemctl daemon-reload
+    systemctl enable nginx.service >/dev/null 2>&1
 }
 
 uninstall_nginx() {
@@ -634,7 +634,7 @@ uninstall_nginx() {
         NGINX_CONFIG_DIR="$(dirname "$(nginx -V 2>&1 | grep -oP '(?<=--conf-path=)[^\s]+')")"
     else
         merror "error"
-        mhead && merror "Didn't find nginx, please delete nginx manually ..." && exit 1
+        mhead && merror "Didn't find nginx, please delete nginx manually ..." && exit 34
     fi
 
     if $PACKAGE_UNINSTALLER nginx >/dev/null 2>&1; then
@@ -643,7 +643,7 @@ uninstall_nginx() {
         remove_content "/var/www/$SERVER_DOMAIN"
     else
         merror "error"
-        mhead && merror "Please delete nginx manually ..." && exit 1
+        mhead && merror "Please delete nginx manually ..." && exit 35
     fi
 }
 
@@ -667,7 +667,7 @@ get_trojan_latest_version() {
         merror "error"
     fi
 
-    mhead && merror "Failed to get the latest trojan version from GitHub API, please check your network and try again." && exit 7
+    mhead && merror "Failed to get the latest trojan version from GitHub API, please check your network and try again." && exit 41
 }
 
 download_trojan() {
@@ -678,7 +678,7 @@ download_trojan() {
 
     if ! curl -fsSL "$_download_url" -o "$_destination" || [[ ! -s "$_destination" ]]; then
         merror "error"
-        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 8
+        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 42
     fi
 
     msuccess "done"
@@ -698,7 +698,7 @@ install_trojan_binary() {
     if install -Dm755 "trojan/trojan" "$TROJAN_EXECUTABLE_PATH"; then
         msuccess "done"
     else
-        merror "error" && exit 9
+        merror "error" && exit 43
     fi
 }
 
@@ -796,7 +796,9 @@ install_trojan() {
     install_trojan_binary
     install_trojan_config
     install_trojan_systemd
+
     systemctl daemon-reload
+    systemctl enable trojan-server.service >/dev/null 2>&1
 }
 
 get_trojan_services() {
@@ -810,8 +812,8 @@ stop_trojan_services() {
     for service in $(get_trojan_services); do
         mnote "    * Stopping $service ... " "true"
 
-        systemctl stop "$service" >/dev/null
-        systemctl disable "$service" >/dev/null
+        systemctl stop "$service" >/dev/null 2>&1
+        systemctl disable "$service" >/dev/null 2>&1
 
         msuccess "done"
     done
@@ -832,6 +834,7 @@ remove_trojan_configs() {
 uninstall_trojan() {
     stop_trojan_services
     remove_trojan_configs
+
     systemctl daemon-reload
 }
 
@@ -855,7 +858,7 @@ get_hysteria_latest_version() {
         merror "error"
     fi
 
-    mhead && merror "Failed to get the latest hysteria version from GitHub API, please check your network and try again." && exit 7
+    mhead && merror "Failed to get the latest hysteria version from GitHub API, please check your network and try again." && exit 51
 }
 
 download_hysteria() {
@@ -866,7 +869,7 @@ download_hysteria() {
 
     if ! curl -fsSL "$_download_url" -o "$_destination" || [[ ! -s "$_destination" ]]; then
         merror "error"
-        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 8
+        mhead && merror "Download failed or file size is zero, please check your network and try again." && exit 52
     fi
 
     msuccess "done" && return
@@ -882,7 +885,7 @@ install_hysteria_binary() {
     if install -Dm755 "hysteria-linux-$ARCHITECTURE" "$HYSTERIA_EXECUTABLE_PATH"; then
         msuccess "done"
     else
-        merror "error" && exit 9
+        merror "error" && exit 53
     fi
 }
 
@@ -983,7 +986,10 @@ install_hysteria() {
     install_hysteria_config
     install_hysteria_systemd
     install_hysteria_porthopping
+
     systemctl daemon-reload
+    systemctl enable nftables.service >/dev/null 2>&1
+    systemctl enable hysteria-server.service >/dev/null 2>&1
 }
 
 get_hysteria_services() {
@@ -997,8 +1003,8 @@ stop_hysteria_services() {
     for service in $(get_hysteria_services); do
         mnote "    * Stopping $service ... " "true"
 
-        systemctl stop "$service" >/dev/null 2>&1 && sleep 1
-        systemctl disable "$service" >/dev/null 2>&1 && sleep 1
+        systemctl stop "$service" >/dev/null 2>&1
+        systemctl disable "$service" >/dev/null 2>&1
 
         msuccess "done"
     done
@@ -1028,6 +1034,7 @@ uninstall_hysteria() {
     stop_hysteria_services
     remove_hysteria_configs
     remove_hysteria_porthopping
+
     systemctl daemon-reload
 }
 
@@ -1036,12 +1043,17 @@ update_reloadcmd() {
     local reload_cmd
     local new_reload_cmd
 
-    reload_cmd=$("$HOME/.acme.sh/acme.sh" --info -d "$SERVER_DOMAIN" | grep "Le_ReloadCmd=" | cut -d '=' -f 2-)
-
     mhead && mnote "Current reload command: " "true"
-    msuccess "$reload_cmd"
 
-    read -rp "Enter new reload command: " new_reload_cmd
+    if [[ -f "$HOME/.acme.sh/acme.sh" ]]; then
+        reload_cmd=$("$HOME/.acme.sh/acme.sh" --info -d "$SERVER_DOMAIN" | grep "Le_ReloadCmd=" | cut -d '=' -f 2-)
+        msuccess "$reload_cmd"
+    else
+        merror "error"
+        mhead && merror "Not find instruction: $HOME/.acme.sh/acme.sh" && exit 61
+    fi
+
+    read -rep "Enter new reload command: " new_reload_cmd
 
     "$HOME/.acme.sh/acme.sh" --install-cert -d "$SERVER_DOMAIN" \
         --key-file "$PRIVATE_KEY_PATH" \
@@ -1076,8 +1088,8 @@ get_hysteria_obfs_password() {
             sed -n '/^[[:space:]]*obfs:/,/^[^[:space:]]/ {
                         /^[[:space:]]*salamander:/,/^[^[:space:]]/ {
                             s/^[[:space:]]*password:[[:space:]]*\(.*\)/\1/p
-            }
-        }' "$HYSTERIA_CONFIG_DIR/config.yaml"
+                }
+            }' "$HYSTERIA_CONFIG_DIR/config.yaml"
         )
     else
         HYSTERIA_OBFS_PASSWORD=""
@@ -1085,7 +1097,7 @@ get_hysteria_obfs_password() {
 }
 
 # NOTE: Get the subscription href in the current system
-get_mihomo_subscription() {
+generate_mihomo_subscription() {
     local _yaml_name
     local _mihomo_dir="/var/www/$SERVER_DOMAIN/public/mihomo/"
 
@@ -1121,12 +1133,18 @@ get_mihomo_subscription() {
         sed -i "s|<<TROJAN_LISTEN_PORT>>|${TROJAN_LISTEN_PORT}|g" "$_mihomo_dir/$_yaml_name"
         sed -i "s|<<TROJAN_AUTH_PASSWORD>>|${TROJAN_AUTH_PASSWORD}|g" "$_mihomo_dir/$_yaml_name"
     fi
+}
+
+get_mihomo_subscription() {
+    local _yaml_name
+
+    _yaml_name=$(find "$_mihomo_dir" -type f -name "*.yaml" -exec basename {} \;)
 
     echo "https://$SERVER_DOMAIN/mihomo/$_yaml_name"
 }
 
 # NOTE: Functions for show prompt information
-show_usage_and_exit() {
+show_usage() {
     echo
     echo -e "            Trojan & Hysteria Server Installer Script"
     echo
@@ -1166,15 +1184,12 @@ show_usage_and_exit() {
     echo -e "                             acme will be automatically installed"
     echo -e "    --reloadcmd        Update the reload command of acme.sh"
     echo -e "    --environment      Display available environment variables"
-    echo -e "    --information      Display system information"
-    echo && exit 0
+    echo -e "    --information      Display system && subscription information"
+    echo -e "    --changepassword   Change the password of the current configuration file"
+    echo
 }
 
-show_environment_and_exit() {
-    get_trojan_auth_password
-    get_hysteria_auth_password
-    get_hysteria_obfs_password
-
+show_environment() {
     echo
     echo -e "            Trojan & Hysteria Server Installer Script"
     echo
@@ -1190,20 +1205,19 @@ show_environment_and_exit() {
     echo -e "    HYSTERIA_HOPPING_RANGE         (default: $HYSTERIA_HOPPING_RANGE)"
     echo -e "    HYSTERIA_AUTH_PASSWORD         (default: $HYSTERIA_AUTH_PASSWORD)"
     echo -e "    HYSTERIA_OBFS_PASSWORD         (default: $HYSTERIA_OBFS_PASSWORD)"
-    echo && exit 0
+    echo
 }
 
 show_information() {
-    get_trojan_auth_password
-    get_hysteria_auth_password
-    get_hysteria_obfs_password
+    # shellcheck disable=SC2155
+    local _server_ip="$(curl -s https://api.ip.sb/ip -A Mozilla)"
 
     echo
-    echo -ne "Server IP:        " && mnote "$(curl -s https://api.ip.sb/ip -A Mozilla)"
+    echo -ne "Server IP:        " && mnote "$_server_ip"
     echo -ne "Server Domain:    " && mnote "$SERVER_DOMAIN"
     echo -ne "Personal Email:   " && mnote "$PERSONAL_EMAIL"
 
-    if [[ -e "$TROJAN_CONFIG_DIR/config.json" ]]; then
+    if [[ -n "$TROJAN_AUTH_PASSWORD" ]]; then
         echo
         echo "Trojan: "
         echo
@@ -1211,7 +1225,7 @@ show_information() {
         echo -ne "    Authenticate Password:    " && mnote "$TROJAN_AUTH_PASSWORD"
     fi
 
-    if [[ -e "$HYSTERIA_CONFIG_DIR/config.yaml" ]]; then
+    if [[ -n "$HYSTERIA_AUTH_PASSWORD" ]]; then
         echo
         echo "Hysteria: "
         echo
@@ -1222,6 +1236,9 @@ show_information() {
     fi
 
     if has_command "nginx" && [[ -n "$TROJAN_AUTH_PASSWORD" || -n "$HYSTERIA_AUTH_PASSWORD" ]]; then
+
+        generate_mihomo_subscription
+
         echo
         echo "Subscription: "
         echo
@@ -1231,9 +1248,29 @@ show_information() {
     echo && return
 }
 
+change_password() {
+    [[ -n "$TROJAN_AUTH_PASSWORD" ]] && TROJAN_AUTH_PASSWORD="$(generate_random_password)"
+    [[ -n "$HYSTERIA_AUTH_PASSWORD" ]] && HYSTERIA_AUTH_PASSWORD="$(generate_random_password)"
+    [[ -n "$HYSTERIA_OBFS_PASSWORD" ]] && HYSTERIA_OBFS_PASSWORD="$(generate_random_password)"
+
+    mhead && mnote "Modifying the password ... " "true"
+
+    if has_command "nginx" && [[ -n "$TROJAN_AUTH_PASSWORD" || -n "$HYSTERIA_AUTH_PASSWORD" ]]; then
+        msuccess "done"
+        show_information
+    else
+        merror "error"
+        mhead && merror "Please make sure nginx && configuration file exists" && exit 6
+    fi
+}
+
 parse_arguments() {
-    # Create a temporary directory and temporarily store all download files
+    # Create a temporary directory and save the downloaded file temporarily
     create_temporary_folder
+    # Get the information of the current configuration file
+    get_trojan_auth_password
+    get_hysteria_auth_password
+    get_hysteria_obfs_password
 
     while [[ "$#" -gt '0' ]]; do
         case "$1" in
@@ -1258,6 +1295,9 @@ parse_arguments() {
         'information' | '--information')
             shift && [[ -z "$OPERATION" ]] && OPERATION="information"
             ;;
+        'changepassword' | '--changepassword')
+            shift && [[ -z "$OPERATION" ]] && OPERATION="changepassword"
+            ;;
         *)
             show_argument_error_and_exit "Unknown command: '$1'"
             ;;
@@ -1271,13 +1311,15 @@ parse_arguments() {
     PUBLIC_PEM_PATH="$ACME_CERT_DIR/$SERVER_DOMAIN/public.pem"
 
     if [[ "$OPERATION" == "help" ]]; then
-        show_usage_and_exit
+        show_usage && exit 0
     elif [[ "$OPERATION" == "reloadcmd" ]]; then
         update_reloadcmd && exit 0
     elif [[ "$OPERATION" == "environment" ]]; then
-        show_environment_and_exit
+        show_environment && exit 0
     elif [[ "$OPERATION" == "information" ]]; then
         show_information && exit 0
+    elif [[ "$OPERATION" == "changepassword" ]]; then
+        change_password && exit 0
     fi
 }
 
@@ -1376,10 +1418,10 @@ main() {
         mnote ""
         mnote "    * nft list ruleset"
         mnote "    * $0 --reloadcmd"
-        mnote "    * systemctl enable nginx.service"
-        mnote "    * systemctl enable nftables.service"
-        mnote "    * systemctl enable trojan-server.service"
-        mnote "    * systemctl enable hysteria-server.service"
+        mnote "    * systemctl restart nginx.service"
+        mnote "    * systemctl restart nftables.service"
+        mnote "    * systemctl restart trojan-server.service"
+        mnote "    * systemctl restart hysteria-server.service"
     fi
 }
 
