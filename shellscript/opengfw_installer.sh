@@ -1137,6 +1137,7 @@ generate_mihomo_subscription() {
 
 get_mihomo_subscription() {
     local _yaml_name
+    local _mihomo_dir="/var/www/$SERVER_DOMAIN/public/mihomo/"
 
     _yaml_name=$(find "$_mihomo_dir" -type f -name "*.yaml" -exec basename {} \;)
 
@@ -1367,7 +1368,7 @@ main() {
         esac
         mnote ""
         msuccess "      Uninstallation Completed"
-        show_information
+        mnote ""
         mnote "You may want to run the following steps: "
         mnote ""
         mnote "    * $0 --reloadcmd"
